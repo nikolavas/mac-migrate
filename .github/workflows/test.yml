@@ -1,0 +1,15 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  roundtrip:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: for f in backup.sh restore.sh tests/roundtrip.sh; do /bin/bash -n "$f"; done
+      - name: Backup and restore a fake home folder
+        run: bash tests/roundtrip.sh
