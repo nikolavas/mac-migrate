@@ -89,7 +89,7 @@ Copy `config.example.sh` to `config.sh` and change what you need: the output fol
 - **Batches:** each project folder goes whole into one archive, and archives are filled up to about 8 GB of source data. This keeps single uploads manageable and lets the backup run on a nearly full disk.
 - **Encryption:** each archive is a gzip'd tar stream encrypted with AES-256-CBC and a key derived from your password (PBKDF2, 200,000 iterations), using the `openssl` that ships with macOS. The password is never written to disk. `MANIFEST.txt` holds a SHA-256 checksum per archive, so the restore can detect a broken download.
 - **Relative paths:** archives store paths relative to your home folder, so they unpack under any username. After unpacking, the restore replaces the old home path in shell, git, SSH, cloud CLI and Claude Code config files. It also renames Claude Code's per-project folders, which are named after the project path.
-- **Nothing is overwritten silently:** if something already exists on the new Mac at a path the restore is about to fill, it is moved to `~/.mac-migration-restore/replaced-<timestamp>/` first.
+- **Nothing is overwritten silently:** settings and project folders that already exist on the new Mac are moved to `~/.mac-migration-restore/replaced-<timestamp>/` before the restored copy goes in, so a fresh clone never gets mixed with the old one. Top-level folders such as Downloads, Desktop or Pictures are merged instead: what you already have on the new Mac stays, and only files with the same name are moved aside.
 - **Cloud placeholders:** Desktop and Documents are skipped when iCloud syncs them, or when they hold files that exist only in the cloud. Reading such a placeholder makes macOS download the file first, which makes a backup crawl.
 
 ## Troubleshooting
@@ -97,7 +97,7 @@ Copy `config.example.sh` to `config.sh` and change what you need: the output fol
 - **The backup seems stuck.** Watch the progress bar: it shows the speed and the time left. A large folder with many small files (a `.git` with years of history, for example) is slower than its size suggests.
 - **"tar skipped some files".** The log in the archives folder lists them. Usually these are files you can't read, owned by another user or by root.
 - **Google Drive zips my download.** Drive zips several files when you download them together from the web. Unzip first, or install Google Drive for desktop and copy the files from its folder.
-- **The restore says "Close Claude Code first".** Claude Code rewrites `~/.claude.json` while it runs. Quit it, run the restore, then start it again.
+- **The restore says "Close Claude Code first".** That happens only while the archive with your Claude Code settings still has to be restored, because Claude Code rewrites `~/.claude.json` while it runs. Quit it, run the restore, then start it again. Archives you add later, such as Downloads, restore with Claude Code open.
 
 ## Alternatives
 

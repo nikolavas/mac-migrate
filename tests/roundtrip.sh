@@ -104,12 +104,22 @@ out=$(run_backup "$PASS" --add Downloads proj/app 2>&1)
 check "--add packs a folder after the backup finished" [ -f "$OLD/mac-migration-archives/extra-downloads.tar.gz.enc" ]
 check "--add skips a folder already in the backup" grep -q "proj/app is already in the backup" <<< "$out"
 
-ARCH="$T/download"
+mkdir -p "$NEW/Downloads"
+echo "downloaded on the new Mac" > "$NEW/Downloads/new-mac-file.txt"
+echo "new Mac version" > "$NEW/Downloads/report.pdf"
+ARCH="$NEW/Downloads/mac-migration-archives"
 cp -R "$OLD/mac-migration-archives" "$ARCH"
+
+# a process named claude, like a running Claude Code
+mkdir -p "$T/bin" && printf '#include <unistd.h>\nint main(void){sleep(120);return 0;}\n' > "$T/bin/claude.c"
+cc -o "$T/bin/claude" "$T/bin/claude.c" 2>/dev/null && { "$T/bin/claude" & CLAUDE_PID=$!; disown; }
+trap 'kill $CLAUDE_PID 2>/dev/null; rm -rf "$T"' EXIT
 
 echo "Restore"
 out=$(HOME="$NEW" MIG_PASS=wrong FORCE=1 /bin/bash "$ARCH/restore.sh" 2>&1)
 check "wrong password refused" grep -q "Wrong password" <<< "$out"
+out=$(HOME="$NEW" MIG_PASS="$PASS" /bin/bash "$ARCH/restore.sh" 2>&1)
+check "refuses while Claude Code runs and its files are pending" grep -q "Close Claude Code first" <<< "$out"
 out=$(HOME="$NEW" MIG_PASS="$PASS" FORCE=1 /bin/bash "$ARCH/restore.sh" 2>&1); rc=$?
 check "restore exits 0" [ $rc -eq 0 ]
 check "project files identical" cmp -s "$OLD/proj/app/data.bin" "$NEW/proj/app/data.bin"
@@ -133,8 +143,22 @@ check "Claude project folder renamed" [ -d "$NEW/.claude/projects/$NEW_SLUG-proj
 check "path rewritten in Claude memory" grep -qF "$NEW/proj" "$NEW/.claude/projects/$NEW_SLUG/memory/MEMORY.md"
 check "old path gone from configs" [ -z "$(grep -rlF "$OLD" "$NEW/.zshrc" "$NEW/.ssh/config" "$NEW/.claude.json" "$NEW/.claude/skills")" ]
 
+check "Downloads merged, not replaced" [ -f "$NEW/Downloads/new-mac-file.txt" ]
+check "archives folder inside Downloads untouched" [ -f "$ARCH/MANIFEST.txt" ]
+check "restored file wins inside a merged folder" grep -q "report" "$NEW/Downloads/report.pdf"
+check "replaced file kept aside" grep -rqs "new Mac version" "$NEW/.mac-migration-restore"
+
 out=$(HOME="$NEW" MIG_PASS="$PASS" FORCE=1 /bin/bash "$ARCH/restore.sh" 2>&1)
 check "second restore skips finished archives" grep -q "already restored" <<< "$out"
+
+mkdir -p "$OLD/Music" && echo "song" > "$OLD/Music/song.txt"
+run_backup "$PASS" --add Music >/dev/null 2>&1
+cp "$OLD/mac-migration-archives/extra-music.tar.gz.enc" "$OLD/mac-migration-archives/MANIFEST.txt" "$OLD/mac-migration-archives/plan.txt" "$ARCH/"
+out=$(HOME="$NEW" MIG_PASS="$PASS" /bin/bash "$ARCH/restore.sh" 2>&1); rc=$?
+check "restores a later archive while Claude Code runs" [ $rc -eq 0 -a -f "$NEW/Music/song.txt" ]
+out=$(HOME="$NEW" /bin/bash "$ARCH/restore.sh" < /dev/null 2>&1); rc=$?
+check "nothing new: exits cleanly" [ $rc -eq 0 ]
+check "nothing new: no password asked" grep -q "Nothing new to restore" <<< "$out"
 
 echo
 if [ $fails -eq 0 ]; then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi
