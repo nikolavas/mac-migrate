@@ -100,14 +100,14 @@ log "Files restored."
 echo
 echo "Next steps:"
 echo "  - Open a new Terminal window so your restored shell settings load."
-if [ -f "$STATE_DIR/Brewfile" ]; then
-  echo "  - Install Homebrew (https://brew.sh), then:  brew bundle --file=~/.mac-migration/Brewfile"
+if [ -f "$STATE_DIR/new-mac-setup/setup.sh" ]; then
+  echo "  - Install your apps and tools (read its README.md first):  bash ~/.mac-migration/new-mac-setup/setup.sh"
 fi
 if [ -x /opt/homebrew/bin/brew ] && ! grep -qs 'brew shellenv' "$HOME/.zprofile" "$HOME/.zshrc" "$HOME/.bash_profile"; then
   echo "  - Your restored shell files don't load Homebrew. Add this line to ~/.zprofile:"
   echo "      eval \"\$(/opt/homebrew/bin/brew shellenv)\""
 fi
-echo "  - Reinstall runtimes and global tools (nvm, pyenv, npm -g, pipx, uv tools): see ~/.mac-migration/inventory.md"
+echo "  - Check ~/.mac-migration/inventory.md for repos and tools the setup script doesn't cover."
 echo "  - Log in again to command-line tools that keep tokens in the Keychain: gh, gcloud, az, aws sso, and so on."
 echo "  - Sign in to your browsers and IDEs and turn on sync."
 echo "  - Reinstall project dependencies (npm install, uv sync, ...) when you open a project."

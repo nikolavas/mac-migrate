@@ -1,0 +1,20 @@
+[
+  {"token": "visual-studio-code", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["Visual Studio Code.app"]}, {"uninstall": [{"quit": "com.microsoft.VSCode"}]}]},
+  {"token": "codex-app", "deprecated": true, "disabled": false, "deprecation_replacement_cask": "chatgpt",
+   "artifacts": [{"app": ["Codex.app"]}, {"uninstall": [{"quit": "com.openai.codex"}]}]},
+  {"token": "chatgpt", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["ChatGPT.app"]}]},
+  {"token": "google-drive", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"pkg": ["GoogleDrive.pkg"]}, {"uninstall": [{"quit": ["com.google.drivefs", "com.google.drivefs.finderhelper"]}]}]},
+  {"token": "gimp", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["GIMP.app"]}]},
+  {"token": "rider", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["Rider.app"]}]},
+  {"token": "jetbrains-toolbox", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["JetBrains Toolbox.app"]}]},
+  {"token": "slack", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["Slack.app"]}]},
+  {"token": "slack@beta", "deprecated": false, "disabled": false, "deprecation_replacement_cask": null,
+   "artifacts": [{"app": ["Slack.app"]}]}
+]

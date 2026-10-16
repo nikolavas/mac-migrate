@@ -1,6 +1,7 @@
 #!/bin/bash
-# Usage: ./backup.sh             create the encrypted archives
-#        DRY_RUN=1 ./backup.sh   show the plan only
+# Usage: ./backup.sh                      create the encrypted archives
+#        ./backup.sh --add Downloads ...  add folders to a backup, also after it finished
+#        DRY_RUN=1 ./backup.sh            show the plan only
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -31,6 +32,21 @@ MAX_BATCH_KB="${MAX_BATCH_KB:-$((MAX_BATCH_GB * 1024 * 1024))}"
 FREE_MARGIN_KB=$((FREE_MARGIN_GB * 1024 * 1024))
 DRY_RUN="${DRY_RUN:-0}"
 STATE_DIR="$HOME/$STATE_DIR_NAME"
+
+ADD_ITEMS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --add)
+      shift
+      while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do
+        i="${1%/}"; i="${i#"$HOME"/}"
+        case "$i" in /*) echo "--add takes folders inside your home folder: $1"; exit 1 ;; esac
+        ADD_ITEMS+=("$i"); shift
+      done ;;
+    -h | --help) sed -n "2,4p" "$0" | sed "s/^# \{0,1\}//"; exit 0 ;;
+    *) echo "Unknown option: $1 (see ./backup.sh --help)"; exit 1 ;;
+  esac
+done
 
 TAR_EXCLUDES=(); DU_EXCLUDES=(); PRUNE=()
 for n in "${EXCLUDE_NAMES[@]}"; do
@@ -174,6 +190,21 @@ build_plan() {
   [ ${#batch[@]} -gt 0 ] && add_plan "$(printf 'projects-%02d' $n)" "${batch[@]}"
 }
 
+add_extras() {
+  local plan="$1" i name
+  for i in "${ADD_ITEMS[@]}"; do
+    if [ ! -e "$HOME/$i" ]; then echo "    ~/$i doesn't exist, skipped." >&2; continue; fi
+    if awk -F'\t' -v i="$i" '{for (k = 3; k <= NF; k++) if (i == $k || index(i "/", $k "/") == 1) f = 1} END {exit !f}' "$plan"; then
+      echo "    ~/$i is already in the backup." >&2; continue
+    fi
+    if cloud_only "$i"; then echo "    Skipping ~/$i: it is synced by iCloud or another cloud drive." >&2; continue; fi
+    name="extra-$(printf '%s' "$i" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+    while cut -f1 "$plan" | grep -qx "$name"; do name="$name-2"; done
+    add_plan "$name" "$i" >> "$plan"
+    echo "    Added ~/$i as $name" >&2
+  done
+}
+
 wait_for_upload() {
   local files=("$OUT"/*.tar.gz.enc)
   [ -e "${files[0]}" ] || return
@@ -216,7 +247,11 @@ make_archive() {
 
 if [ "$DRY_RUN" = 1 ]; then
   log "Plan (nothing is created in a dry run):"
-  build_plan | awk -F'\t' '{t += $2; printf "    %-12s %7d MB  ", $1, $2/1024; for (i = 3; i <= NF; i++) printf "%s ", $i; print ""} END {printf "    Total: %.1f GB before compression\n", t/1048576}'
+  plan_tmp="$(mktemp)"
+  if [ -f "$OUT/plan.txt" ]; then cp "$OUT/plan.txt" "$plan_tmp"; else build_plan > "$plan_tmp"; fi
+  add_extras "$plan_tmp"
+  awk -F'\t' '{t += $2; printf "    %-14s %7d MB  ", $1, $2/1024; for (i = 3; i <= NF; i++) printf "%s ", $i; print ""} END {printf "    Total: %.1f GB before compression\n", t/1048576}' "$plan_tmp"
+  rm -f "$plan_tmp"
   exit 0
 fi
 
@@ -241,13 +276,12 @@ if [ ! -f "$OUT/plan.txt" ]; then
   included_roots > "$STATE_DIR/project-roots.txt"
   log "Saving a list of repos, apps and tools"
   write_inventory
-  if [ -z "$SKIP_BREW" ] && command -v brew >/dev/null; then
-    log "Saving your Homebrew packages"
-    brew bundle dump --file="$STATE_DIR/Brewfile" --force >/dev/null 2>&1 && echo "    Saved ~/$STATE_DIR_NAME/Brewfile"
-  fi
+  log "Building the software package for the new Mac"
+  "$SCRIPT_DIR/make-setup.sh" "$STATE_DIR/new-mac-setup"
   log "Measuring folders"
   build_plan > "$OUT/plan.txt"
 fi
+[ ${#ADD_ITEMS[@]} -gt 0 ] && add_extras "$OUT/plan.txt"
 
 log "Creating archives in $OUT"
 export M_TOTAL M_BEFORE=0
@@ -257,7 +291,9 @@ while IFS=$'\t' read -r -a row -u 3; do
   M_BEFORE=$((M_BEFORE + row[1]))
 done 3< "$OUT/plan.txt"
 cp "$SCRIPT_DIR/restore.sh" "$OUT/"
+[ -d "$STATE_DIR/new-mac-setup" ] && cp -R "$STATE_DIR/new-mac-setup" "$OUT/"
 
 log "Done. Copy everything in $OUT to your cloud drive or external disk:"
 ls -1 "$OUT" | sed 's/^/    /'
+echo "    On the new Mac, new-mac-setup/setup.sh installs your apps and tools, also before the restore."
 echo "    Keep this Mac as it is until the new one works."

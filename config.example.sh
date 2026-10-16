@@ -19,3 +19,7 @@ PROJECT_ROOTS=(proj code Developer work)
 
 # Folder and file names left out everywhere, because they are rebuilt or recreated.
 EXCLUDE_NAMES+=(.gradle target dist .turbo .cache)
+
+# Apps your company installs for you. They stay out of the software package's Brewfile
+# and are listed under "From your company's self-service portal" instead.
+SETUP_SKIP_APPS=("Okta Verify" "Microsoft Word" "Microsoft Excel" "Microsoft Outlook" "Microsoft Teams" "Privileges")

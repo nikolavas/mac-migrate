@@ -4,24 +4,25 @@ Move your developer setup to a new Mac when Migration Assistant isn't an option.
 
 This is common on company Macs managed by Jamf, Intune, Kandji or similar. IT enrolls the new Mac from scratch, Migration Assistant is blocked or would drag along old management profiles, and your account may get a new username, for example `firstname.lastname` instead of `firstnamelastname`.
 
-mac-migrate is two shell scripts:
+mac-migrate is three shell scripts:
 
 - **`backup.sh`** packs your settings, keys and projects into encrypted archives of a fixed size. You move them through any cloud drive or external disk.
 - **`restore.sh`** unpacks them on the new Mac and rewrites old home-folder paths if your username changed.
+- **`make-setup.sh`** builds a software package for the new Mac: a Brewfile with your command-line tools, apps, App Store apps and VS Code extensions, plus a `setup.sh` that installs all of it. `backup.sh` runs it for you.
 
-Both scripts run as your normal user: no admin rights, no app to install, no network pairing between the two Macs. They use only tools that ship with macOS (bash, tar, gzip, openssl, perl).
+The scripts run as your normal user: no admin rights, no app to install, no network pairing between the two Macs. They use only tools that ship with macOS (bash, tar, gzip, openssl, perl).
 
 ## What it moves
 
 | Moved | Not moved, and why |
 |---|---|
-| SSH and GPG keys, cloud CLI configs (`.ssh`, `.gnupg`, `.aws`, `.azure`, `.kube`) | Apps: reinstall them, or use the Brewfile it saves |
+| SSH and GPG keys, cloud CLI configs (`.ssh`, `.gnupg`, `.aws`, `.azure`, `.kube`) | Apps: the software package reinstalls them (see below) |
 | Shell, git, editor and terminal config (`.zshrc`, `.gitconfig`, `.config/nvim`, …) | `~/Library`: caches and app data that sync again or rebuild |
 | Claude Code settings, skills and memory (`.claude`, `.claude.json`) | Keychain items: CLI tokens stored there need a fresh login |
 | Every folder in your project folders (`~/proj`, `~/code`, `~/Developer`, …), including uncommitted work, stashes and local branches | `node_modules`, `.venv`, `.next`, `.terraform` and similar: reinstall per project |
 | Desktop and Documents, unless iCloud already syncs them | Browser profiles: use your browser's sync |
 
-Before it packs anything, it writes an inventory to `~/.mac-migration/`: every git repo with its remote and any unpushed or uncommitted work, your apps, VS Code extensions, global npm/pipx/uv tools and a Homebrew `Brewfile`. Repos outside the backed-up folders are listed separately, so nothing is left behind by surprise.
+Before it packs anything, it writes an inventory to `~/.mac-migration/`: every git repo with its remote and any unpushed or uncommitted work, your apps, VS Code extensions and global npm/pipx/uv tools. Repos outside the backed-up folders are listed separately, so nothing is left behind by surprise.
 
 ## Quick start
 
@@ -36,7 +37,7 @@ DRY_RUN=1 ./backup.sh    # shows what goes into which archive, creates nothing
 
 Save the password in your password manager. Without it the archives can't be opened.
 
-The archives land in `~/mac-migration-archives`. If your disk fills up during the run, the script pauses, lists the finished archives, and waits until you have uploaded them. It then deletes them locally and continues. Copy everything in that folder to your cloud drive or an external disk: the `*.tar.gz.enc` files, `MANIFEST.txt`, `plan.txt` and `restore.sh`.
+The archives land in `~/mac-migration-archives`. If your disk fills up during the run, the script pauses, lists the finished archives, and waits until you have uploaded them. It then deletes them locally and continues. Copy everything in that folder to your cloud drive or an external disk: the `*.tar.gz.enc` files, `MANIFEST.txt`, `plan.txt`, `restore.sh` and the `new-mac-setup` folder.
 
 On the new Mac, put the files in one folder, close Claude Code if you use it, and run:
 
@@ -48,9 +49,40 @@ Then follow the next steps it prints.
 
 You can stop either script and run it again. Finished archives are skipped.
 
+## Software on the new Mac
+
+The backup also writes `new-mac-setup/` next to the archives: a `Brewfile`, a `setup.sh` and a `README.md` that lists what is in it. You can run it on the new Mac before the restore, so apps install while the archives download:
+
+```bash
+bash new-mac-setup/setup.sh
+```
+
+It installs the Xcode Command Line Tools and Homebrew if they are missing (Homebrew needs an administrator password once), then everything in the Brewfile, your Node.js version through nvm with your global npm packages, your uv and pipx tools, and Claude Code. App Store apps need you signed in to the App Store app. The script is safe to run again.
+
+How the Brewfile is built:
+
+- Your Homebrew taps, formulae, casks and VS Code extensions, from `brew bundle dump`. Deprecated or disabled packages get a comment, or are swapped for their replacement.
+- Every other app in `/Applications` and `~/Applications` is matched to a Homebrew cask by app name, by bundle ID, or by name without a version number. A discontinued cask is replaced by its successor, for example the Codex app by the ChatGPT app.
+- App Store apps become `mas` lines with their store ID.
+- Apple's own apps, background helpers and IDEs that JetBrains Toolbox manages are left out.
+
+Apps your company installs, such as Okta Verify, the VPN client or Microsoft 365, shouldn't be installed a second time through Homebrew. There is no reliable way to tell them apart from apps you installed yourself, so list them in `SETUP_SKIP_APPS` in `config.sh`. They then appear in the package README under "From your company's self-service portal". Apps without a matching cask are listed there too, to install by hand. Read that README and the Brewfile before you run `setup.sh`.
+
+To build the package on its own, without a backup: `./make-setup.sh ~/Desktop/new-mac-setup`.
+
+## Adding a folder later
+
+Forgot a folder, or cleaned up Downloads first? Add it to a backup at any time, also after the backup finished:
+
+```bash
+./backup.sh --add Downloads
+```
+
+Each added folder becomes one extra archive (`extra-downloads.tar.gz.enc`), using the same password. Folders already in the backup are skipped. Upload the new archive and the updated `MANIFEST.txt`, then run `restore.sh` again on the new Mac: it restores only what it hasn't restored yet.
+
 ## Configuration
 
-Copy `config.example.sh` to `config.sh` and change what you need: the output folder, archive size, which settings, personal folders and project folders to include, and which folder names to skip.
+Copy `config.example.sh` to `config.sh` and change what you need: the output folder, archive size, which settings, personal folders and project folders to include, which folder names to skip, and which company-managed apps to leave out of the software package.
 
 ## How it works
 
@@ -84,7 +116,7 @@ Check your company's policy on copying source code and credentials to a cloud dr
 bash tests/roundtrip.sh
 ```
 
-The test builds a fake home folder in a temporary directory, backs it up, restores it under a different username, and checks about 30 things: identical files, skipped dependencies, kept git changes, rewritten paths, key permissions, wrong-password handling and re-runs. It never touches your real home folder.
+The test builds a fake home folder in a temporary directory, backs it up, restores it under a different username, and checks about 50 things: identical files, skipped dependencies, kept git changes, rewritten paths, key permissions, wrong-password handling, re-runs, folders added later, and how the software package matches apps to casks (using a small cask fixture, so it needs no network). It never touches your real home folder.
 
 ## License
 

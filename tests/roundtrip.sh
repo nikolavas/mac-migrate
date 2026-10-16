@@ -13,6 +13,7 @@ fails=0
 ok()   { echo "  ok    $*"; }
 fail() { echo "  FAIL  $*"; fails=$((fails + 1)); }
 check() { local msg="$1"; shift; if "$@"; then ok "$msg"; else fail "$msg"; fi; }
+check_not() { local msg="$1"; shift; if "$@"; then fail "$msg"; else ok "$msg"; fi; }
 
 echo "Building a fake home in $T"
 mkdir -p "$OLD"/{proj/app/node_modules/dep,"proj/with space",Code/tool,.ssh,.claude/skills/demo,Documents,Desktop} "$NEW"
@@ -39,8 +40,31 @@ xattr -w com.apple.icloud.desktop 1 "$OLD/Documents"
 # relative bind keeps the socket path under the 104-character limit
 (cd "$OLD/.ssh" && /usr/bin/python3 -c 'import socket; socket.socket(socket.AF_UNIX).bind("agent.sock")' 2>/dev/null)
 echo "fresh install" > "$NEW/.zshrc"
+mkdir -p "$OLD/Downloads" && echo "report" > "$OLD/Downloads/report.pdf"
 
-run_backup() { HOME="$OLD" MIG_PASS="$1" MAX_BATCH_KB=4000 SKIP_BREW=1 /bin/bash "$REPO/backup.sh"; }
+mkapp() {
+  mkdir -p "$T/apps/$1.app/Contents"
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>%s</string>%s</dict></plist>\n' \
+    "$2" "${3:+<key>$3</key><true/>}" > "$T/apps/$1.app/Contents/Info.plist"
+}
+mkapp "Visual Studio Code" com.microsoft.VSCode
+mkapp "Codex" com.openai.codex
+mkapp "Google Drive" com.google.drivefs
+mkapp "GIMP-2.10" org.gimp.gimp-2.10
+mkapp "JetBrains Toolbox" com.jetbrains.toolbox
+mkapp "Rider" com.jetbrains.rider
+mkapp "Slack" com.tinyspeck.slackmacgap
+mkapp "Mystery Tool" com.example.mystery
+mkapp "Helper" com.example.helper LSBackgroundOnly
+mkapp "Safari" com.apple.Safari
+mkapp "Store App" com.example.store && mkdir -p "$T/apps/Store App.app/Contents/_MASReceipt"
+echo 'SETUP_SKIP_APPS=("Slack")' > "$T/config.sh"
+
+run_backup() {
+  local pass="$1"; shift
+  HOME="$OLD" MIG_PASS="$pass" MAX_BATCH_KB=4000 SKIP_BREW=1 APPS_PATH="$T/apps" \
+    CASK_INDEX="$REPO/tests/fixtures/cask.json" MIGRATE_CONFIG="$T/config.sh" /bin/bash "$REPO/backup.sh" "$@"
+}
 
 echo "Backup"
 out=$(run_backup "$PASS" 2>&1); rc=$?
@@ -54,10 +78,31 @@ check "repo with uncommitted work reported" grep -q "proj/app" <<< "$out"
 check "case-only duplicate folder packed once" [ "$(grep -oi "code/tool" "$OLD/mac-migration-archives/plan.txt" | wc -l | tr -d " ")" = 1 ]
 check "folder keeps its real name" grep -q "Code/tool" "$OLD/mac-migration-archives/plan.txt"
 
+echo "Software package"
+SETUP="$OLD/.mac-migration/new-mac-setup"
+check "Brewfile has an app matched by name" grep -qx 'cask "visual-studio-code"' "$SETUP/Brewfile"
+check "Brewfile has an app matched by bundle id" grep -qx 'cask "google-drive"' "$SETUP/Brewfile"
+check "Brewfile has an app matched without its version" grep -qx 'cask "gimp"' "$SETUP/Brewfile"
+check "discontinued cask replaced" grep -qx 'cask "chatgpt"' "$SETUP/Brewfile"
+check_not "discontinued cask left out" grep -q 'codex-app"' "$SETUP/Brewfile"
+check_not "Toolbox-managed IDE left out" grep -q 'cask "rider"' "$SETUP/Brewfile"
+check_not "company app left out" grep -q 'cask "slack' "$SETUP/Brewfile"
+check "company app listed for self-service" grep -q "^- Slack$" "$SETUP/README.md"
+check "IDE listed for Toolbox" grep -q "^- Rider$" "$SETUP/README.md"
+check "unknown app listed to install by hand" grep -q "^- Mystery Tool$" "$SETUP/README.md"
+check "App Store app without an id listed" grep -q "^- Store App (App Store)$" "$SETUP/README.md"
+check_not "helper and system apps ignored" grep -qE "Helper|Safari" "$SETUP/README.md" "$SETUP/Brewfile"
+check "setup.sh is valid bash" /bin/bash -n "$SETUP/setup.sh"
+check "package copied next to the archives" [ -f "$OLD/mac-migration-archives/new-mac-setup/setup.sh" ]
+
 out=$(run_backup "$PASS" 2>&1)
 check "second run skips finished archives" grep -q "already done" <<< "$out"
 out=$(run_backup wrong 2>&1)
 check "second run with another password refused" grep -q "isn't the password" <<< "$out"
+
+out=$(run_backup "$PASS" --add Downloads proj/app 2>&1)
+check "--add packs a folder after the backup finished" [ -f "$OLD/mac-migration-archives/extra-downloads.tar.gz.enc" ]
+check "--add skips a folder already in the backup" grep -q "proj/app is already in the backup" <<< "$out"
 
 ARCH="$T/download"
 cp -R "$OLD/mac-migration-archives" "$ARCH"
@@ -73,6 +118,8 @@ check "second project root restored" cmp -s "$OLD/Code/tool/data.bin" "$NEW/Code
 check "node_modules left out" [ ! -e "$NEW/proj/app/node_modules" ]
 check "uncommitted git change kept" grep -q "app.txt" <<< "$(git -C "$NEW/proj/app" status --porcelain)"
 check "Desktop restored" [ -f "$NEW/Desktop/notes.txt" ]
+check "folder added later restored" [ -f "$NEW/Downloads/report.pdf" ]
+check "software package restored" [ -f "$NEW/.mac-migration/new-mac-setup/setup.sh" ]
 check "Documents not restored" [ ! -e "$NEW/Documents/synced.txt" ]
 check "existing .zshrc moved aside" grep -rqs "fresh install" "$NEW/.mac-migration-restore"
 check ".ssh is 700" [ "$(stat -f %Lp "$NEW/.ssh")" = 700 ]
