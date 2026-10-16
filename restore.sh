@@ -15,7 +15,7 @@ decrypt() { "$OPENSSL" enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:MIG_PA
 
 items_of() { awk -F'\t' -v n="$1" '$1 == n {for (i = 3; i <= NF; i++) print $i}' "$SRC/plan.txt" 2>/dev/null; }
 
-# Moves existing files that the staged copy replaces into $REPLACED; folders are merged, not replaced.
+# Folders are merged; files and bundles (Photos library, Keynote file, app) replace the existing copy, which goes to $REPLACED
 merge_into_home() {
   /usr/bin/perl -MFile::Find -MFile::Path=make_path -MFile::Basename -e '
     my ($stage, $home, $aside) = @ARGV;
@@ -25,6 +25,13 @@ merge_into_home() {
       my $rel = substr($File::Find::name, length($stage) + 1);
       return if $rel eq "";
       my $dst = "$home/$rel";
+      if (-d $_ && !-l $_ && $rel =~ /\.(photoslibrary|photolibrary|imovielibrary|musiclibrary|tvlibrary|fcpbundle|logicx|band|key|numbers|pages|app|bundle|framework|plugin|rtfd|xcodeproj|xcworkspace)$/i) {
+        $park->($rel) if -e $dst || -l $dst;
+        make_path(dirname($dst));
+        rename($_, $dst) or do { warn "    could not place ~/$rel: $!\n"; $err++ };
+        $File::Find::prune = 1;
+        return;
+      }
       if (-d $_ && !-l $_) {
         $park->($rel) if -l $dst || (-e $dst && !-d $dst);
         make_path($dst) unless -d $dst;

@@ -151,11 +151,21 @@ check "replaced file kept aside" grep -rqs "new Mac version" "$NEW/.mac-migratio
 out=$(HOME="$NEW" MIG_PASS="$PASS" FORCE=1 /bin/bash "$ARCH/restore.sh" 2>&1)
 check "second restore skips finished archives" grep -q "already restored" <<< "$out"
 
-mkdir -p "$OLD/Music" && echo "song" > "$OLD/Music/song.txt"
-run_backup "$PASS" --add Music >/dev/null 2>&1
-cp "$OLD/mac-migration-archives/extra-music.tar.gz.enc" "$OLD/mac-migration-archives/MANIFEST.txt" "$OLD/mac-migration-archives/plan.txt" "$ARCH/"
+mkdir -p "$OLD/Music" "$OLD/Pictures/Photos Library.photoslibrary/database"
+echo "song" > "$OLD/Music/song.txt"
+echo "scan" > "$OLD/Pictures/scan.pdf"
+echo "old library" > "$OLD/Pictures/Photos Library.photoslibrary/database/old.db"
+mkdir -p "$NEW/Pictures/Photos Library.photoslibrary/database"
+echo "new library" > "$NEW/Pictures/Photos Library.photoslibrary/database/new.db"
+echo "new Mac picture" > "$NEW/Pictures/keep.jpg"
+run_backup "$PASS" --add Music Pictures >/dev/null 2>&1
+cp "$OLD/mac-migration-archives"/extra-*.tar.gz.enc "$OLD/mac-migration-archives/MANIFEST.txt" "$OLD/mac-migration-archives/plan.txt" "$ARCH/"
 out=$(HOME="$NEW" MIG_PASS="$PASS" /bin/bash "$ARCH/restore.sh" 2>&1); rc=$?
 check "restores a later archive while Claude Code runs" [ $rc -eq 0 -a -f "$NEW/Music/song.txt" ]
+check "Pictures merged: new Mac file kept" [ -f "$NEW/Pictures/keep.jpg" -a -f "$NEW/Pictures/scan.pdf" ]
+check "Photos library restored whole" [ -f "$NEW/Pictures/Photos Library.photoslibrary/database/old.db" ]
+check_not "Photos library not mixed with the new one" [ -e "$NEW/Pictures/Photos Library.photoslibrary/database/new.db" ]
+check "new Mac's Photos library kept aside" [ -n "$(find "$NEW/.mac-migration-restore" -path '*Photos Library.photoslibrary/database/new.db' 2>/dev/null)" ]
 out=$(HOME="$NEW" /bin/bash "$ARCH/restore.sh" < /dev/null 2>&1); rc=$?
 check "nothing new: exits cleanly" [ $rc -eq 0 ]
 check "nothing new: no password asked" grep -q "Nothing new to restore" <<< "$out"
