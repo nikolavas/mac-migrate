@@ -132,6 +132,13 @@
   tr:last-child td { border-bottom: 0; }
   td:first-child { width: 50%; }
   @media (max-width: 640px) { th, td { padding: 12px; font-size: 15px; } }
+  .table-scroll { overflow-x: auto; border-radius: var(--radius); }
+  table.compare { min-width: 640px; }
+  table.compare td:first-child { width: 24%; font-weight: 600; }
+  table.compare td:nth-child(2), table.compare th:nth-child(2) { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  table.compare th:nth-child(2) { color: var(--accent); }
+  .note { color: var(--muted); font-size: 14px; margin: 12px 0 36px; }
+  .card.quiet { background: transparent; }
 
   .code { position: relative; background: var(--code-bg); border: 1px solid var(--line); border-radius: 14px; margin: 10px 0 24px; }
   .code pre { margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14.5px; line-height: 1.6; }
@@ -157,6 +164,7 @@
     <nav class="links" aria-label="Sections">
       <a href="#how" class="hide-sm">How it works</a>
       <a href="#where" class="hide-sm">Destinations</a>
+      <a href="#compare" class="hide-sm">Compare</a>
       <a href="#start">Get started</a>
       <a href="https://github.com/nikolavas/mac-migrate">GitHub</a>
     </nav>
@@ -278,7 +286,45 @@
     </div>
   </section>
 
-  <section id="start">
+  <section id="compare">
+    <div class="wrap">
+      <p class="eyebrow">Compared</p>
+      <h2>Mac Migrate or IBM Data Shift?</h2>
+      <p class="intro"><a href="https://github.com/IBM/mac-ibm-migration-tool">IBM Data Shift</a> is the closest tool: a free, open-source app that copies files, apps and preferences straight from one Mac to the other. Both are good, for different situations.</p>
+      <div class="table-scroll">
+        <table class="compare">
+          <thead><tr><th></th><th>Mac Migrate</th><th>IBM Data Shift</th></tr></thead>
+          <tbody>
+            <tr><td>How data moves</td><td>Through a cloud drive or a disk</td><td>Directly between the two Macs, over Wi-Fi or Thunderbolt</td></tr>
+            <tr><td>Both Macs on at once</td><td>No</td><td>Yes, side by side, powered on and awake</td></tr>
+            <tr><td>What it moves</td><td>Settings, keys, projects and folders you pick. Apps come back through Homebrew</td><td>User files, apps, preferences and settings</td></tr>
+            <tr><td>A stopped run</td><td>Continues where it stopped</td><td>Resuming isn't documented</td></tr>
+            <tr><td>Afterwards</td><td>An encrypted backup you can restore from again</td><td>The data is on the two Macs only</td></tr>
+            <tr><td>Protection</td><td>AES-256 with your password, signed manifest, checksum per file</td><td>Pairing with a verification code. Transfer encryption isn't documented</td></tr>
+            <tr><td>New username</td><td>Old home paths rewritten in shell, git, SSH, cloud CLI and Claude Code settings</td><td>Not documented</td></tr>
+            <tr><td>Developer extras</td><td>Lists unpushed work, skips <code>node_modules</code> and similar, Homebrew setup package</td><td>Not documented</td></tr>
+            <tr><td>Permissions</td><td>Desktop, Documents and Downloads</td><td>Full Disk Access for a complete migration</td></tr>
+            <tr><td>Speed</td><td>Upload, then download</td><td>One local copy, so faster</td></tr>
+            <tr><td>Company integration</td><td>None</td><td>Jamf Pro inventory, settings for IT</td></tr>
+            <tr><td>Price</td><td>Free, MIT</td><td>Free, Apache 2.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">&ldquo;Not documented&rdquo; means IBM's README (October 2026) doesn't mention it, not that it can't.</p>
+      <h3>Where Mac Migrate is stronger</h3>
+      <div class="grid three" style="margin-top: 16px">
+        <div class="card"><h3>The Macs never meet</h3><p>Back up, hand in the old Mac, restore days later or from another office. A direct transfer needs both Macs side by side.</p></div>
+        <div class="card"><h3>Stopping costs nothing</h3><p>Finished archives are kept and the next run continues. A closed lid or a dropped connection doesn't send you back to the start.</p></div>
+        <div class="card"><h3>You keep a backup</h3><p>The encrypted backup stays until you delete it. If something goes wrong on the new Mac, restore again.</p></div>
+        <div class="card"><h3>Checkable security</h3><p>AES-256, a manifest signed with your password and a checksum per file. Changed or damaged archives are refused.</p></div>
+        <div class="card"><h3>Made for developers</h3><p>Unpushed commits and stashes are listed first, dependency folders stay behind, tools come back through Homebrew, Claude Code moves with its memory.</p></div>
+        <div class="card"><h3>Fewer permissions</h3><p>No Full Disk Access and no administrator for the migration itself, and username changes handled.</p></div>
+      </div>
+      <div class="card quiet" style="margin-top: 18px"><h3>Where Data Shift is stronger</h3><p>It's faster, moves apps and their preferences as they are, integrates with Jamf Pro, and IBM runs it at scale. Pick it when IT supports it and both Macs can sit side by side. Or combine them: Data Shift for the bulk, Mac Migrate for your developer setup and as a backup.</p></div>
+    </div>
+  </section>
+
+  <section class="alt" id="start">
     <div class="wrap">
       <p class="eyebrow">Get started</p>
       <h2>Two commands on each Mac</h2>
@@ -288,11 +334,11 @@ cd mac-migrate && ./make-app.sh --install</code></pre></div>
       <p>On the new Mac, sign in to the cloud drive with your backup (or connect the disk), then restore. The backup's last screen shows the exact command, and <code>curl</code> works before anything else is installed.</p>
       <div class="code"><div class="label">New Mac</div><button class="copy" type="button">Copy</button><pre><code>curl -fsSL https://github.com/nikolavas/mac-migrate/archive/refs/tags/v2.0.0.tar.gz | tar xz
 /bin/bash mac-migrate-2.0.0/restore.sh --from "$HOME/Library/CloudStorage"</code></pre></div>
-      <p>Prefer Terminal throughout? <code>./backup.sh --to &lt;folder&gt;</code>, <code>./restore.sh --from &lt;folder&gt;</code> and <code>./cleanup.sh</code> do everything the app does. See the <a href="https://github.com/nikolavas/mac-migrate#readme">README</a> for every option.</p>
+      <p>Prefer Terminal throughout? <code>./backup.sh --to &lt;folder&gt;</code>, <code>./restore.sh --from &lt;folder&gt;</code> and <code>./cleanup.sh</code> do everything the app does. Every option is in the <a href="https://github.com/nikolavas/mac-migrate/blob/main/docs/guide.md">guide</a>.</p>
     </div>
   </section>
 
-  <section class="alt" id="faq">
+  <section id="faq">
     <div class="wrap">
       <p class="eyebrow">Questions</p>
       <h2>Good to know</h2>
