@@ -71,10 +71,12 @@ H="$T/t/dave"; mkdir -p "$H/proj/x"; head -c 200000 /dev/urandom > "$H/proj/x/da
 backup "$H" > /dev/null 2>&1
 A="$H/mac-migration-archives"
 cp -R "$A" "$T/tampered"
-sed -i '' '2s/^./0/' "$T/tampered/MANIFEST.txt"
+# flip the first hex digit of the first checksum, whatever it is
+/usr/bin/perl -pi -e 's/^(.)/$1 eq "0" ? "1" : "0"/e if $. == 2' "$T/tampered/MANIFEST.txt"
 N="$T/t/new"; newhome "$N"
 out=$(restore "$N" --from "$T/tampered" 2>&1); rc=$?
 check "changed manifest refused" [ $rc -eq 1 ] && grep -q "doesn't match the password" <<< "$out"
+N="$T/t/new2"; newhome "$N"
 out=$(PW=nope restore "$N" --from "$A" 2>&1); rc=$?
 check "wrong password: exit 10, not tampering" [ $rc -eq 10 ] && grep -q "Wrong password" <<< "$out"
 out=$(restore "$N" --from "$A" --verify 2>&1); rc=$?
@@ -85,6 +87,7 @@ cp -R "$A" "$T/damaged"
 printf 'X' | dd of="$T/damaged/projects-01.tar.gz.enc" bs=1 seek=5000 conv=notrunc 2>/dev/null
 out=$(restore "$N" --from "$T/damaged" --verify --deep 2>&1); rc=$?
 check "--verify --deep finds a damaged part" [ $rc -eq 1 ] && grep -q "damaged  projects-01" <<< "$out"
+N="$T/t/new3"; newhome "$N"
 out=$(restore "$N" --from "$T/damaged" 2>&1); rc=$?
 check "restore refuses the damaged archive" [ $rc -ne 0 ] && grep -q "damaged or incomplete" <<< "$out"
 check_not "damaged archive not unpacked" [ -e "$N/proj/x/data.bin" ]
@@ -117,6 +120,15 @@ N="$T/u/new"; newhome "$N"
 restore "$N" --from "$H/rel-archives" > /dev/null 2>&1
 check "the rest is restored" [ -f "$N/proj/app/a.txt" ]
 check "a settings item survives an exclude of its folder" [ -f "$N/.gradle/gradle.properties" ]
+
+echo "Runs from a folder full of files"
+H="$T/w/ivy"; mkdir -p "$H/proj/a" "$T/w/cwd"; echo a > "$H/proj/a/a.txt"
+for i in $(seq 1 15); do echo "$i" > "$T/w/cwd/file$i.txt"; done
+(cd "$T/w/cwd" && backup "$H" > /dev/null 2>&1)
+N="$T/w/new"; newhome "$N"
+(cd "$T/w/cwd" && restore "$N" --from "$H/mac-migration-archives" > /dev/null 2>&1)
+check "no file in the current folder is touched" [ "$(find "$T/w/cwd" -type f | wc -l | tr -d " ")" = 15 ]
+check_not "the current folder never lands in PATH" grep -q "PATH=\.:" "$N"/.mac-migration/logs/*.log
 
 echo "Lock, password on stdin, Stop and resume"
 H="$T/l/gus"; mkdir -p "$H/proj/a" "$H/.mac-migration/lock"

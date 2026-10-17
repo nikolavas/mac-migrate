@@ -16,8 +16,8 @@ E_PASSWORD=10 E_UPLOAD=11 E_PERMISSION=12 E_LOCKED=13 E_SPACE=14 E_STALLED=15
 mm_env() {
   local d nvm
   [ -n "$LANG" ] || export LANG=en_US.UTF-8
-  # shellcheck disable=SC2012  # version folders have plain names
-  nvm=$(ls -d "$HOME"/.nvm/versions/node/v*/bin 2>/dev/null | sort -V | tail -1)
+  # find, not ls with a glob: under nullglob an unmatched glob would list the current folder
+  nvm=$(find "$HOME/.nvm/versions/node" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1)
   for d in /usr/local/bin /opt/homebrew/sbin /opt/homebrew/bin "$nvm" "$HOME/.local/bin"; do
     [ -n "$d" ] && [ -d "$d" ] || continue
     case ":$PATH:" in *":$d:"*) ;; *) PATH="$d:$PATH" ;; esac
@@ -45,8 +45,8 @@ start_log() {
   shift
   mkdir -p "$dir" || return 0
   LOG_FILE="$dir/$name-$(date +%Y%m%d-%H%M%S).log"
-  # shellcheck disable=SC2012  # log names are ours
-  ls -t "$dir/$name"-*.log 2>/dev/null | tail -n +10 | while IFS= read -r f; do rm -f "$f"; done
+  # the 9 newest logs stay (names sort by date). find, not ls with a glob, for the same reason as above
+  find "$dir" -maxdepth 1 -type f -name "$name-*.log" 2>/dev/null | sort -r | tail -n +10 | while IFS= read -r f; do rm -f "$f"; done
   exec 4>&2
   if [ "$MIG_NONINTERACTIVE" = 1 ]; then
     exec >> "$LOG_FILE" 2>&1
