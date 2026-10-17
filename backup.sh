@@ -394,7 +394,7 @@ wait_uploaded() {
   while :; do
     pending=0; moving=0; err=""; left_kb=0
     while IFS=$'\t' read -r p cl up uping _ e; do
-      [ "$cl" = 1 ] && [ "$up" != 1 ] || continue
+      if [ "$cl" != 1 ] || [ "$up" = 1 ]; then continue; fi
       pending=$((pending + 1)); left_kb=$((left_kb + $(file_size "$p") / 1024))
       [ "$uping" = 1 ] && moving=1
       [ -n "$e" ] && [ "$e" != - ] && err="$e"
@@ -415,7 +415,8 @@ make_room() {  # need_kb
   while IFS=$'\t' read -r f _ _; do
     [ "$(free_kb "$OUT")" -ge "$need" ] && return 0
     p="$PUBLISH/$f"
-    [ -f "$p" ] && [ "$(cloud status "$p" | cut -f5)" = 1 ] || continue
+    [ -f "$p" ] || continue
+    [ "$(cloud status "$p" | cut -f5)" = 1 ] || continue  # already freed
     echo "    Waiting for $PROVIDER to upload $f, then freeing it on this Mac"
     wait_uploaded "$p"
     cloud evict "$p" >/dev/null

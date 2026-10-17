@@ -57,7 +57,7 @@ list_places() {
     [ -d "$d" ] || continue
     info=$(volume_info "$d") || continue
     mp=$(vinfo "$info" MountPoint)
-    [ -n "$mp" ] && [ "$mp" != / ] || continue
+    case "$mp" in "" | /) continue ;; esac  # not mounted, or the startup disk
     [ "$(vinfo "$info" WritableVolume)" = true ] || continue
     [ "$(vinfo "$info" BusProtocol)" = "Disk Image" ] && [ -z "$MIG_ALLOW_DISK_IMAGES" ] && continue
     fs=$(vinfo "$info" FilesystemType)

@@ -19,7 +19,8 @@ mm_env() {
   # find, not ls with a glob: under nullglob an unmatched glob would list the current folder
   nvm=$(find "$HOME/.nvm/versions/node" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1)
   for d in /usr/local/bin /opt/homebrew/sbin /opt/homebrew/bin "$nvm" "$HOME/.local/bin"; do
-    [ -n "$d" ] && [ -d "$d" ] || continue
+    [ -n "$d" ] || continue
+    [ -d "$d" ] || continue
     case ":$PATH:" in *":$d:"*) ;; *) PATH="$d:$PATH" ;; esac
   done
   export PATH
@@ -109,7 +110,7 @@ read_password() {  # new|existing
     local p2
     IFS= read -rs -p "Password: " PW; echo
     IFS= read -rs -p "Repeat the password: " p2; echo
-    [ -n "$PW" ] && [ "$PW" = "$p2" ] || die "$E_PASSWORD" "The passwords don't match."
+    if [ -z "$PW" ] || [ "$PW" != "$p2" ]; then die "$E_PASSWORD" "The passwords don't match."; fi
   else
     IFS= read -rs -p "Archive password: " PW; echo
   fi

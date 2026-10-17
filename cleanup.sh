@@ -246,7 +246,7 @@ case "$ans" in
     chosen=()
     for n in $ans; do
       case "$n" in *[!0-9]*) echo "Not a number: $n"; exit 1 ;; esac
-      [ "$n" -ge 1 ] && [ "$n" -le ${#rows[@]} ] || { echo "No item $n"; exit 1; }
+      if [ "$n" -lt 1 ] || [ "$n" -gt ${#rows[@]} ]; then echo "No item $n"; exit 1; fi
       chosen+=("$(cut -f1 <<< "${rows[$((n - 1))]}")")
     done ;;
 esac
