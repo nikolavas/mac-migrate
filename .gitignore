@@ -1,3 +1,4 @@
 config.sh
 mac-migration-archives/
 .DS_Store
+build/
