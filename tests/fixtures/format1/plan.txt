@@ -1,0 +1,4 @@
+settings	32	.ssh	.zshrc	.claude	.claude.json	.mac-migration
+personal	4	Desktop
+projects-01	4	proj/app
+extra-downloads	4	Downloads

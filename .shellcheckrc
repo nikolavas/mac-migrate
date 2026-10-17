@@ -1,0 +1,5 @@
+# The scripts target macOS bash 3.2
+shell=bash
+external-sources=true
+# ${var//a/b} with a regex is not what these seds do
+disable=SC2001
