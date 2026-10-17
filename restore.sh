@@ -38,7 +38,7 @@ mm_env
 find_backup() {
   local start="$1" found
   [ -f "$start/MANIFEST.txt" ] && { echo "$start"; return; }
-  found=$(find "$start" -maxdepth 3 -name MANIFEST.txt -not -path '*/mac-migrate/*' 2>/dev/null | sed 's#/MANIFEST.txt$##')
+  found=$(find "$start" -maxdepth 4 -name MANIFEST.txt -not -path '*/mac-migrate/*' 2>/dev/null | sed 's#/MANIFEST.txt$##')
   [ -n "$found" ] || return 1
   if [ "$(printf '%s\n' "$found" | wc -l | tr -d ' ')" -gt 1 ]; then
     echo "There are several backups in $start. Choose one with --from:" >&2
