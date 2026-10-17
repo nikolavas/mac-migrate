@@ -1,0 +1,28 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: VERSION matches the tag
+        run: test "v$(cat VERSION)" = "$GITHUB_REF_NAME"
+      - name: Tests
+        run: for t in tests/*.sh; do echo "== $t"; /bin/bash "$t" || exit 1; done
+      - name: Source archive and checksum
+        run: |
+          name="mac-migrate-$(cat VERSION)"
+          git archive --prefix="$name/" -o "$name.tar.gz" HEAD
+          shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
+          awk -v v="## $(cat VERSION)" '$0 == v {f = 1; next} /^## / {f = 0} f' CHANGELOG.md > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" mac-migrate-*.tar.gz mac-migrate-*.tar.gz.sha256 --title "Mac Migrate ${GITHUB_REF_NAME#v}" --notes-file notes.md

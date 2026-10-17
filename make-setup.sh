@@ -5,9 +5,11 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT_DIR="${1:-$HOME/.mac-migration/new-mac-setup}"
 SETUP_SKIP_APPS=()
-CONFIG="${MIGRATE_CONFIG:-$SCRIPT_DIR/config.sh}"
-# shellcheck source=/dev/null
-[ -f "$CONFIG" ] && . "$CONFIG"
+if [ -n "$MIGRATE_CONFIG" ]; then CONFIGS=("$MIGRATE_CONFIG"); else CONFIGS=("$SCRIPT_DIR/config.sh" "$HOME/.mac-migration/config.sh"); fi
+for c in "${CONFIGS[@]}"; do
+  # shellcheck source=/dev/null
+  [ -f "$c" ] && . "$c"
+done
 APPS_PATH="${APPS_PATH:-/Applications:$HOME/Applications}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -19,7 +21,10 @@ quote_list() { sed 's/[\\"$`]/\\&/g; s/.*/"&"/' "$1" | tr '\n' ' '; }
 : > "$TMP/dump"
 printf 'none\tnone\tnone\t-\t-\n' > "$TMP/status.tsv"
 if have_brew; then
-  brew bundle dump --file="$TMP/dump" --force >/dev/null 2>&1
+  if ! brew bundle dump --file="$TMP/dump" --force >/dev/null 2>&1; then
+    echo "    Warning: brew bundle dump failed, so the Brewfile lacks your Homebrew formulae and casks."
+    warned=1
+  fi
   brew info --json=v2 --installed 2>/dev/null | /usr/bin/perl -CO -MJSON::PP -0777 -ne '
     my $j = eval { decode_json($_) } or exit 0;
     for my $k (["brew", "formulae", "name"], ["cask", "casks", "token"]) {
@@ -34,7 +39,7 @@ fi
 
 idx="${CASK_INDEX:-$TMP/cask.json}"
 if [ -z "$CASK_INDEX" ]; then
-  curl -fsSL https://formulae.brew.sh/api/cask.json -o "$idx" 2>/dev/null || : > "$idx"
+  curl -fsSL --retry 3 --max-time 120 https://formulae.brew.sh/api/cask.json -o "$idx" 2>/dev/null || : > "$idx"
 fi
 # casks.tsv: kind(app|bid)<TAB>key<TAB>token<TAB>deprecated<TAB>disabled<TAB>replacement
 /usr/bin/perl -CO -MJSON::PP -0777 -ne '
@@ -56,6 +61,10 @@ fi
       }
     }
   }' "$idx" > "$TMP/casks.tsv"
+if [ ! -s "$TMP/casks.tsv" ]; then
+  echo "    Warning: couldn't load the Homebrew cask list (offline?), so apps are listed to install by hand."
+  warned=1
+fi
 
 # Prefers stable casks (no @) that aren't disabled; prints token<TAB>deprecated<TAB>disabled<TAB>replacement
 lookup() {
@@ -257,3 +266,4 @@ count() { grep -c "^$1 " "$OUT_DIR/Brewfile" | tr -d ' '; }
 } > "$OUT_DIR/README.md"
 
 echo "    Saved $OUT_DIR (Brewfile, setup.sh, README.md)"
+[ -z "$warned" ]

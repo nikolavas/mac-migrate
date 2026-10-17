@@ -5,11 +5,22 @@ on:
   pull_request:
 
 jobs:
-  roundtrip:
-    runs-on: macos-latest
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -x $(git ls-files '*.sh')
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Syntax check
-        run: for f in backup.sh restore.sh tests/roundtrip.sh; do /bin/bash -n "$f"; done
-      - name: Backup and restore a fake home folder
-        run: bash tests/roundtrip.sh
+        run: for f in $(git ls-files '*.sh'); do /bin/bash -n "$f" || exit 1; done
+      - name: Tests
+        run: for t in tests/*.sh; do echo "== $t"; /bin/bash "$t" || exit 1; done

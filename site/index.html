@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mac Migrate</title>
+<meta name="description" content="Move your developer setup to a new Mac when Migration Assistant isn't an option. Encrypted archives through Google Drive, iCloud Drive or a disk. No admin rights, nothing to install.">
+<meta property="og:title" content="Mac Migrate">
+<meta property="og:description" content="Move your developer setup to a new company Mac: settings, keys and projects, encrypted, through Google Drive, iCloud Drive or a disk.">
+<meta property="og:image" content="https://nikolavas.github.io/mac-migrate/screenshots/destination.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#2266f2">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root {
+    --bg: #fbfbfd;
+    --bg-alt: #f2f3f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #5f6370;
+    --line: rgba(0, 0, 0, 0.09);
+    --accent: #2266f2;
+    --accent-2: #18b7a8;
+    --accent-text: #ffffff;
+    --code-bg: #f0f2f6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(15, 30, 80, 0.10);
+    --radius: 18px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0c10;
+      --bg-alt: #121419;
+      --card: #171a21;
+      --text: #f2f3f5;
+      --muted: #a0a5b1;
+      --line: rgba(255, 255, 255, 0.10);
+      --accent: #4d8bff;
+      --accent-2: #2fd3c2;
+      --code-bg: #1d2129;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.45);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0c10; --bg-alt: #121419; --card: #171a21; --text: #f2f3f5; --muted: #a0a5b1;
+    --line: rgba(255, 255, 255, 0.10); --accent: #4d8bff; --accent-2: #2fd3c2; --code-bg: #1d2129;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  img { max-width: 100%; height: auto; display: block; }
+  code, pre { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace; }
+  code { font-size: 0.9em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 6px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  @media (min-width: 720px) { .wrap { padding: 0 32px; } }
+
+  /* Header */
+  header.top { position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px);
+    background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; align-items: center; gap: 12px; height: 56px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text); }
+  .brand img { width: 28px; height: 28px; }
+  nav.links { margin-left: auto; display: flex; gap: 20px; font-size: 15px; }
+  nav.links a { color: var(--muted); }
+  nav.links a:hover { color: var(--text); text-decoration: none; }
+  @media (max-width: 640px) { nav.links .hide-sm { display: none; } }
+
+  /* Hero */
+  .hero { padding: 72px 0 40px; text-align: center; }
+  .hero .icon { width: 112px; height: 112px; margin: 0 auto 20px; filter: drop-shadow(0 12px 24px rgba(34, 102, 242, 0.25)); }
+  h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 16px; }
+  .gradient { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: clamp(19px, 2.4vw, 23px); color: var(--muted); max-width: 720px; margin: 0 auto 28px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .button { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 999px; font-weight: 600; font-size: 16px; border: 1px solid transparent; }
+  .button:hover { text-decoration: none; }
+  .button.primary { background: var(--accent); color: var(--accent-text); }
+  .button.primary:hover { filter: brightness(1.08); }
+  .button.secondary { border-color: var(--line); color: var(--text); background: var(--card); }
+  .facts { display: flex; gap: 10px 24px; justify-content: center; flex-wrap: wrap; margin: 28px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 15px; }
+  .facts li::before { content: "✓"; color: var(--accent-2); font-weight: 700; margin-right: 6px; }
+
+  .shots { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 48px auto 0; align-items: start; }
+  .shots picture { display: block; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .shots picture:first-child { margin-top: 40px; }
+  @media (max-width: 640px) { .shots { grid-template-columns: 1fr; } .shots picture:first-child { margin-top: 0; } }
+
+  /* Sections */
+  section { padding: 72px 0; }
+  section.alt { background: var(--bg-alt); }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px; font-weight: 700; color: var(--accent); margin: 0 0 8px; }
+  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 12px; }
+  h3 { font-size: 19px; margin: 0 0 6px; }
+  .intro { color: var(--muted); max-width: 680px; margin: 0 0 36px; font-size: 18px; }
+  .grid { display: grid; gap: 18px; }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .grid.four { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+  .card p { margin: 0; color: var(--muted); font-size: 16px; }
+  .step-number { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); margin-bottom: 14px; }
+  .glyph { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 14px; background: var(--code-bg); color: var(--accent); }
+  .glyph svg { width: 22px; height: 22px; }
+
+  .split { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+  .split picture { border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; max-width: 440px; justify-self: center; }
+  ul.ticks { list-style: none; padding: 0; margin: 0 0 8px; }
+  ul.ticks li { padding-left: 28px; position: relative; margin: 0 0 10px; color: var(--muted); }
+  ul.ticks li strong { color: var(--text); }
+  ul.ticks li::before { content: ""; position: absolute; left: 0; top: 0.45em; width: 14px; height: 14px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 16px; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  th, td { text-align: left; vertical-align: top; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  th { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { width: 50%; }
+  @media (max-width: 640px) { th, td { padding: 12px; font-size: 15px; } }
+
+  .code { position: relative; background: var(--code-bg); border: 1px solid var(--line); border-radius: 14px; margin: 10px 0 24px; }
+  .code pre { margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14.5px; line-height: 1.6; }
+  .code .label { font-size: 13px; color: var(--muted); padding: 10px 20px 0; }
+  .copy { position: absolute; top: 10px; right: 10px; font: 600 13px/1 -apple-system, system-ui, sans-serif; padding: 7px 11px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  .copy:hover { border-color: var(--accent); }
+  .comment { color: var(--muted); }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin: 0 0 12px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+
+  footer { border-top: 1px solid var(--line); padding: 36px 0 48px; color: var(--muted); font-size: 15px; }
+  footer .wrap { display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="icon.png" alt="">Mac Migrate</a>
+    <nav class="links" aria-label="Sections">
+      <a href="#how" class="hide-sm">How it works</a>
+      <a href="#where" class="hide-sm">Destinations</a>
+      <a href="#start">Get started</a>
+      <a href="https://github.com/nikolavas/mac-migrate">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <img class="icon" src="icon.png" alt="Mac Migrate icon: a moving box">
+    <h1>Move to a new Mac.<br><span class="gradient">Keep everything that matters.</span></h1>
+    <p class="lede">Your settings, SSH keys and projects, with uncommitted work, moved to a new company Mac through Google Drive, iCloud Drive or a disk. For when Migration Assistant isn't an option.</p>
+    <div class="cta">
+      <a class="button primary" href="#start">Get started</a>
+      <a class="button secondary" href="https://github.com/nikolavas/mac-migrate">View on GitHub</a>
+    </div>
+    <ul class="facts">
+      <li>No admin rights</li>
+      <li>Nothing to install</li>
+      <li>Encrypted with your password</li>
+      <li>Open source, MIT</li>
+    </ul>
+    <div class="shots">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/destination-dark.png">
+        <img src="screenshots/destination.png" width="472" height="448" alt="Choosing where the backup goes: Google Drive, iCloud Drive, an external disk or another folder">
+      </picture>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/include-dark.png">
+        <img src="screenshots/include.png" width="472" height="608" alt="Choosing what goes into the backup: settings, project folders and home folders, with their sizes">
+      </picture>
+    </div>
+  </div>
+
+  <section class="alt" id="why">
+    <div class="wrap">
+      <p class="eyebrow">Why</p>
+      <h2>Company Macs start from scratch</h2>
+      <p class="intro">IT enrolls the new Mac with Jamf, Intune or Kandji. Migration Assistant is blocked, or would drag along old management profiles. And your account may get a new name, <code>firstname.lastname</code> instead of <code>firstnamelastname</code>. Mac Migrate moves what a developer actually needs, and fixes the paths that change with your username.</p>
+      <div class="grid three">
+        <div class="card"><h3>Projects, with unpushed work</h3><p>Every folder in <code>~/proj</code>, <code>~/code</code> or <code>~/Developer</code>, including uncommitted changes, stashes and local branches. <code>node_modules</code> and virtual environments stay behind.</p></div>
+        <div class="card"><h3>Keys and settings</h3><p>SSH and GPG keys, cloud CLI configs, shell, git, editor and terminal settings, and Claude Code with its skills and memory.</p></div>
+        <div class="card"><h3>Your apps, reinstalled</h3><p>A Brewfile and a setup script with your formulae, apps, App Store apps, VS Code extensions, Node.js version and global tools, matched to Homebrew casks.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>Three steps, either Mac at its own pace</h2>
+      <p class="intro">The two Macs never need to be on at the same time or on the same network.</p>
+      <div class="grid three">
+        <div class="card"><div class="step-number">1</div><h3>Back up the old Mac</h3><p>Choose where the backup goes and what goes in, then a password. Archives of up to 8 GB are packed, encrypted, read back and checked.</p></div>
+        <div class="card"><div class="step-number">2</div><h3>It moves by itself</h3><p>Each archive goes to your cloud drive and is freed on the old Mac once uploaded, so a nearly full disk is enough. Or straight to a disk.</p></div>
+        <div class="card"><div class="step-number">3</div><h3>Restore on the new Mac</h3><p>The restore checks every file, puts what you already have aside, rewrites old home paths, and opens the setup script for your apps.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="where">
+    <div class="wrap">
+      <p class="eyebrow">Destinations</p>
+      <h2>Put it wherever you can reach it</h2>
+      <p class="intro">Mac Migrate finds the cloud drives and disks on your Mac. It works through their desktop apps, so there is nothing to sign in to twice.</p>
+      <div class="grid four">
+        <div class="card">
+          <div class="glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.2 9.2 4.5 4.5 0 0 0 7 18z"/></svg></div>
+          <h3>Google Drive</h3><p>Through Google Drive for desktop. Archives upload one by one and are freed on your Mac once they're in the cloud.</p>
+        </div>
+        <div class="card">
+          <div class="glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.2 9.2 4.5 4.5 0 0 0 7 18z"/><path d="M12 10v5m-2.5-2.5L12 15l2.5-2.5"/></svg></div>
+          <h3>iCloud Drive</h3><p>The same, with Optimize Mac Storage on. It's your personal Apple account, so check your company's policy first.</p>
+        </div>
+        <div class="card">
+          <div class="glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 12h18"/></svg></div>
+          <h3>OneDrive, Dropbox, Box</h3><p>Any cloud drive in <code>~/Library/CloudStorage</code>. For Box, archives are split into parts under its 5 GB limit.</p>
+        </div>
+        <div class="card">
+          <div class="glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2.5"/><circle cx="17" cy="12" r="1"/></svg></div>
+          <h3>External disk</h3><p>Written straight to the disk, so your Mac needs no free space. On FAT32 disks, archives are split into 3.9 GB parts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cleanup">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Free up space</p>
+        <h2>A full disk is no longer a dead end</h2>
+        <p class="intro">Developer Macs hold gigabytes of caches that tools rebuild by themselves. Mac Migrate lists them with their sizes and clears what you pick, using each tool's own clean command where there is one.</p>
+        <ul class="ticks">
+          <li><strong>Rebuilt automatically</strong>, selected by default: Homebrew, npm, pnpm, Yarn, pip, uv, Go, Xcode DerivedData, JetBrains.</li>
+          <li><strong>Downloaded again when needed</strong>, opt-in: Gradle, Maven, Cargo, Hugging Face models, test browsers.</li>
+          <li><strong>In your projects</strong>, opt-in: <code>node_modules</code>, virtual environments, build output.</li>
+          <li>Never follows a symlink, never leaves your home folder, never touches a running app's cache.</li>
+        </ul>
+      </div>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/cleanup-dark.png">
+        <img src="screenshots/cleanup.png" width="472" height="500" alt="Free up space: caches grouped by how they come back, with sizes and checkboxes">
+      </picture>
+    </div>
+  </section>
+
+  <section class="alt" id="safe">
+    <div class="wrap">
+      <p class="eyebrow">Built for migration day</p>
+      <h2>Careful with your data, at every step</h2>
+      <p class="intro">A migration happens once, often on a deadline. Mac Migrate is made to be stopped, resumed and checked.</p>
+      <div class="grid three">
+        <div class="card"><h3>Encrypted and signed</h3><p>AES-256 with a key derived from your password. A signed manifest with a checksum per file catches tampering and broken downloads.</p></div>
+        <div class="card"><h3>Nothing overwritten</h3><p>What already exists on the new Mac is moved aside first. Folders like Downloads are merged. A Photos library is never mixed with another.</p></div>
+        <div class="card"><h3>Stop any time</h3><p>Finished archives are kept, half-written ones removed. Start again and it continues. The Mac stays awake while it works.</p></div>
+        <div class="card"><h3>New username, same paths</h3><p>Old home paths are rewritten in shell, git, SSH, cloud CLI and Claude Code settings, also when the new name starts with the old one.</p></div>
+        <div class="card"><h3>Honest about privacy</h3><p>macOS asks before it may read Desktop, Documents and Downloads. Without access, the backup stops instead of saving empty archives.</p></div>
+        <div class="card"><h3>Just shell scripts</h3><p>bash, tar, openssl and perl that ship with macOS. The app is a thin native front end you build on your Mac from its source.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <p class="eyebrow">Get started</p>
+      <h2>Two commands on each Mac</h2>
+      <p class="intro">On the old Mac, build the app and choose <strong>Back up this Mac</strong>. It takes a few seconds and needs no administrator password.</p>
+      <div class="code"><div class="label">Old Mac</div><button class="copy" type="button">Copy</button><pre><code>git clone https://github.com/nikolavas/mac-migrate.git
+cd mac-migrate && ./make-app.sh --install</code></pre></div>
+      <p>On the new Mac, sign in to the cloud drive with your backup (or connect the disk), then restore. The backup's last screen shows the exact command, and <code>curl</code> works before anything else is installed.</p>
+      <div class="code"><div class="label">New Mac</div><button class="copy" type="button">Copy</button><pre><code>curl -fsSL https://github.com/nikolavas/mac-migrate/archive/refs/tags/v2.0.0.tar.gz | tar xz
+/bin/bash mac-migrate-2.0.0/restore.sh --from "$HOME/Library/CloudStorage"</code></pre></div>
+      <p>Prefer Terminal throughout? <code>./backup.sh --to &lt;folder&gt;</code>, <code>./restore.sh --from &lt;folder&gt;</code> and <code>./cleanup.sh</code> do everything the app does. See the <a href="https://github.com/nikolavas/mac-migrate#readme">README</a> for every option.</p>
+    </div>
+  </section>
+
+  <section class="alt" id="faq">
+    <div class="wrap">
+      <p class="eyebrow">Questions</p>
+      <h2>Good to know</h2>
+      <details><summary>Is it allowed to copy work files to a cloud drive?</summary><p>Check your company's policy, even though everything is encrypted. Your company's Google Drive or OneDrive is usually fine, a personal iCloud account often isn't. If in doubt, use an encrypted external disk.</p></details>
+      <details><summary>What happens if I forget the password?</summary><p>Nobody can open the archives, including you. Save it in your password manager when you choose it. If the old Mac still works, you can make a new backup.</p></details>
+      <details><summary>My disk is almost full. Can I still back up?</summary><p>Yes. To a cloud drive, only one archive at a time needs room on your Mac: it is freed once uploaded. To a disk, your Mac needs no room at all. Free up space clears caches first if you want.</p></details>
+      <details><summary>Why is the app built on my Mac instead of downloaded?</summary><p>A downloaded app that isn't signed by a registered developer is blocked by Gatekeeper, and many company Macs won't let you override that. Built on your Mac from its source, it opens normally, and you can read every line of what it runs.</p></details>
+      <details><summary>Does it work with backups made by the earlier version?</summary><p>Yes. They restore as before. They weren't signed, so the restore asks before it trusts them.</p></details>
+      <details><summary>What isn't moved?</summary><p>Apps (the setup script reinstalls them), <code>~/Library</code>, Keychain items, browser profiles (use your browser's sync) and dependency folders such as <code>node_modules</code>, which you reinstall per project.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Mac Migrate is open source under the MIT License.</span>
+    <span><a href="https://github.com/nikolavas/mac-migrate">GitHub</a> · <a href="https://github.com/nikolavas/mac-migrate/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/nikolavas/mac-migrate/issues">Report a problem</a></span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var text = button.parentElement.querySelector("pre").innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        button.textContent = "Copied";
+        setTimeout(function () { button.textContent = "Copy"; }, 1600);
+      }, function () { button.textContent = "Select and copy"; });
+    });
+  });
+</script>
+</body>
+</html>

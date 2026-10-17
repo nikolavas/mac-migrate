@@ -2,18 +2,13 @@
 # Backs up a fake home, restores it under another username and checks the result.
 set -o pipefail
 
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=tests/support/helpers.sh
+. "$(dirname "$0")/support/helpers.sh"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 OLD="$T/old/alice"
 NEW="$T/new/alice.smith"
 PASS=correct-horse
-fails=0
-
-ok()   { echo "  ok    $*"; }
-fail() { echo "  FAIL  $*"; fails=$((fails + 1)); }
-check() { local msg="$1"; shift; if "$@"; then ok "$msg"; else fail "$msg"; fi; }
-check_not() { local msg="$1"; shift; if "$@"; then fail "$msg"; else ok "$msg"; fi; }
 
 echo "Building a fake home in $T"
 mkdir -p "$OLD"/{proj/app/node_modules/dep,"proj/with space",Code/tool,.ssh,.claude/skills/demo,Documents,Desktop} "$NEW"
@@ -62,18 +57,22 @@ echo 'SETUP_SKIP_APPS=("Slack")' > "$T/config.sh"
 
 run_backup() {
   local pass="$1"; shift
-  HOME="$OLD" MIG_PASS="$pass" MAX_BATCH_KB=4000 SKIP_BREW=1 APPS_PATH="$T/apps" \
+  HOME="$OLD" MIG_PASS="$pass" MIG_RUN="$T/run" MAX_BATCH_KB=4000 SKIP_BREW=1 APPS_PATH="$T/apps" \
     CASK_INDEX="$REPO/tests/fixtures/cask.json" MIGRATE_CONFIG="$T/config.sh" /bin/bash "$REPO/backup.sh" "$@"
 }
 
 echo "Backup"
+mkdir -p "$T/run"
 out=$(run_backup "$PASS" 2>&1); rc=$?
 check "backup exits 0" [ $rc -eq 0 ]
 check "no tar errors (sockets skipped)" [ -z "$(ls "$OLD/mac-migration-archives"/*.errors.log 2>/dev/null)" ]
 check "settings archive created" [ -f "$OLD/mac-migration-archives/settings.tar.gz.enc" ]
-check "projects split into several archives" [ "$(ls "$OLD/mac-migration-archives"/projects-*.tar.gz.enc | wc -l)" -ge 2 ]
+check "projects split into several archives" [ "$(find "$OLD/mac-migration-archives" -name 'projects-*.tar.gz.enc' | wc -l)" -ge 2 ]
 check "iCloud-synced Documents skipped" grep -q "Skipping ~/Documents" <<< "$out"
-check "progress bar reaches 100%" grep -q "100%" <<< "$(tr '\r' '\n' <<< "$out")"
+# shellcheck disable=SC2016  # awk program
+check "status shows the finished total" awk -F'\t' '$1 == "done" && $3 == $4 && $3 > 0 {f = 1} END {exit !f}' "$T/run/status"
+check "result recorded for the app" grep -qx "result	0	" "$T/run/events.tsv"
+check "manifest is format 2 and complete" grep -q "^# mac-migrate format 2 .*complete=yes" "$OLD/mac-migration-archives/MANIFEST.txt"
 check "repo with uncommitted work reported" grep -q "proj/app" <<< "$out"
 check "case-only duplicate folder packed once" [ "$(grep -oi "code/tool" "$OLD/mac-migration-archives/plan.txt" | wc -l | tr -d " ")" = 1 ]
 check "folder keeps its real name" grep -q "Code/tool" "$OLD/mac-migration-archives/plan.txt"
@@ -170,5 +169,4 @@ out=$(HOME="$NEW" /bin/bash "$ARCH/restore.sh" < /dev/null 2>&1); rc=$?
 check "nothing new: exits cleanly" [ $rc -eq 0 ]
 check "nothing new: no password asked" grep -q "Nothing new to restore" <<< "$out"
 
-echo
-if [ $fails -eq 0 ]; then echo "All checks passed."; else echo "$fails check(s) failed."; exit 1; fi
+summary
