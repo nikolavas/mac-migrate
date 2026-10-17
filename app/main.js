@@ -158,12 +158,15 @@ function alive(task, pid) {
   return sh("ps -o pid= -p " + pid).trim() !== "";
 }
 
+// delay() throws when Stop is clicked in the progress window. Where that click means nothing, wait anyway.
+function pause(sec) { try { delay(sec); } catch (e) { $.NSThread.sleepForTimeInterval(sec); } }
+
 // TERM to the whole process group, KILL after 10 seconds
 function stop(pid) {
   var group = sh("ps -o pgid= -p " + pid).trim() === String(pid);
   var target = group ? "-" + pid : String(pid);
   sh("/bin/kill -TERM -- " + target);
-  for (var i = 0; i < 20 && alive(null, pid); i++) delay(0.5);
+  for (var i = 0; i < 20 && alive(null, pid); i++) pause(0.5);
   if (alive(null, pid)) sh("/bin/kill -KILL -- " + target);
 }
 
@@ -181,13 +184,15 @@ function progressDone() { if (HAS_PROGRESS) { Progress.totalUnitCount = 0; Progr
 function monitor(task, what, pid, askStop) {
   pid = pid || task.processIdentifier;
   progress(what, "Starting…", -1);
-  var asked = false;
+  var stopping = false, asked = 0;
   while (alive(task, pid)) {
     try {
       delay(0.5);
     } catch (e) {
-      // Stop in the progress window
-      if (!asked && (!askStop || askStop())) { asked = true; progress("Stopping…", "", -1); stop(pid); }
+      // Stop in the progress window. Ask at most every 3 seconds, in case the click keeps firing.
+      if (stopping || Date.now() - asked < 3000) { $.NSThread.sleepForTimeInterval(0.5); continue; }
+      if (!askStop || askStop()) { stopping = true; progress("Stopping…", "", -1); stop(pid); }
+      asked = Date.now();
       continue;
     }
     var d = describe(parseStatus(readFile(RUN + "/status")));
@@ -436,9 +441,11 @@ function backup() {
   if (existing && existing.archives.length) {
     var doneCount = existing.archives.filter(function (a) { return a.state === "done"; }).length;
     if (existing.complete === "yes") {
-      var b = info("This Mac is already backed up there",
-        "The backup in " + tilde(existing.folder) + " has " + doneCount + " archives. Add folders to it, or make a new backup next to it.",
-        ["Add folders…", "New backup", "Cancel"]);
+      // a new backup goes into a new folder next to the old one, except in ~/mac-migration-archives
+      var b = info("This Mac is already backed up there", "The backup in " + tilde(existing.folder) + " has " + doneCount + " archives. " +
+        (dest ? "Add folders to it, or make a new backup next to it." : "Add folders to it. To start over, move that folder away first."),
+        dest ? ["Add folders…", "New backup", "Cancel"] : ["Add folders…", "Cancel"]);
+      if (!dest && b === 1) return;
       if (b === 0) return addFolders(to, existing);
       if (b !== 1) return;
     } else {
